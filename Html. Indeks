@@ -1,0 +1,226 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generator Sertifikat Bintang Qur'an</title>
+
+<script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #f1f5f6;
+  margin: 0;
+  padding: 25px 15px;
+}
+
+.container {
+  max-width: 430px;
+  margin: auto;
+  background: white;
+  padding: 25px;
+  border-radius: 15px;
+  text-align: center;
+  box-shadow: 0 3px 15px #00000012;
+}
+
+h2 {
+  color: #087e91;
+}
+
+p {
+  color: #555;
+  line-height: 1.5;
+}
+
+input {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+  margin: 15px 0;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  background: #087e91;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+button:disabled {
+  opacity: 0.6;
+}
+
+#status {
+  margin-top: 15px;
+  font-size: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h2>Generator Sertifikat</h2>
+
+  <p>
+    Bintang Qur'an x The Power of Hijrah
+  </p>
+
+  <p>
+    Masukkan nama lengkap untuk membuat
+    sertifikat penghargaan.
+  </p>
+
+  <input
+    type="text"
+    id="nama"
+    placeholder="Masukkan nama lengkap"
+    autocomplete="name"
+  >
+
+  <button id="tombol" onclick="buatSertifikat()">
+    Buat Sertifikat
+  </button>
+
+  <p id="status"></p>
+</div>
+
+<script>
+async function buatSertifikat() {
+  const nama = document.getElementById("nama").value.trim();
+  const status = document.getElementById("status");
+  const tombol = document.getElementById("tombol");
+
+  if (!nama) {
+    alert("Masukkan nama lengkap terlebih dahulu.");
+    return;
+  }
+
+  tombol.disabled = true;
+  status.textContent = "Sedang membuat sertifikat...";
+
+  try {
+    const response = await fetch("sertifikat.jpg");
+
+    if (!response.ok) {
+      throw new Error("File desain sertifikat tidak ditemukan.");
+    }
+
+    const gambar = await response.arrayBuffer();
+
+    const { PDFDocument, StandardFonts, rgb } = PDFLib;
+
+    const pdf = await PDFDocument.create();
+
+    // Ukuran A4 vertikal dalam satuan point
+    const lebar = 595.28;
+    const tinggi = 841.89;
+
+    const halaman = pdf.addPage([lebar, tinggi]);
+
+    const desain = await pdf.embedJpg(gambar);
+
+    // Memasukkan desain ke halaman A4
+    halaman.drawImage(desain, {
+      x: 0,
+      y: 0,
+      width: lebar,
+      height: tinggi
+    });
+
+    const font = await pdf.embedFont(
+      StandardFonts.HelveticaBold
+    );
+
+    // Posisi nama berdasarkan desain asli 1024 x 1536
+    const skalaX = lebar / 1024;
+    const skalaY = tinggi / 1536;
+
+    // Nama peserta
+    let ukuranNama = 29;
+
+    while (
+      font.widthOfTextAtSize(nama, ukuranNama) > lebar * 0.82 &&
+      ukuranNama > 12
+    ) {
+      ukuranNama -= 1;
+    }
+
+    const lebarNama = font.widthOfTextAtSize(
+      nama,
+      ukuranNama
+    );
+
+    halaman.drawText(nama, {
+      x: (lebar - lebarNama) / 2,
+      y: tinggi - (590 * skalaY),
+      size: ukuranNama,
+      font: font,
+      color: rgb(0.30, 0.30, 0.30)
+    });
+
+    // Tulisan Sebagai: Peserta
+    const peran = "Peserta";
+    const ukuranPeran = 21;
+
+    const lebarPeran = font.widthOfTextAtSize(
+      peran,
+      ukuranPeran
+    );
+
+    halaman.drawText(peran, {
+      x: (lebar - lebarPeran) / 2,
+      y: tinggi - (770 * skalaY),
+      size: ukuranPeran,
+      font: font,
+      color: rgb(0.30, 0.30, 0.30)
+    });
+
+    // Membuat PDF
+    const hasil = await pdf.save();
+
+    const blob = new Blob(
+      [hasil],
+      { type: "application/pdf" }
+    );
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download =
+      "Sertifikat-" +
+      nama.replace(/[^a-z0-9]/gi, "-") +
+      ".pdf";
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+
+    status.textContent = "Sertifikat berhasil dibuat!";
+
+  } catch (error) {
+    status.textContent = "Gagal: " + error.message;
+  }
+
+  tombol.disabled = false;
+}
+</script>
+
+</body>
+</html>
